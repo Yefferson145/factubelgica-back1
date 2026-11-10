@@ -17,12 +17,23 @@ public class JdbcJwtRepository implements JwtRepository {
 
   @Override
   public Optional<String> findUserRoleById(UUID userId) {
+    // La columna users.role guarda 'admin'/'user' (en minusculas), pero se
+    // normaliza en Java dentro del filtro para aceptar cualquier variante.
     String sql = "SELECT role FROM users WHERE user_id = ?";
 
     try {
       String role = jdbcTemplate.queryForObject(sql, String.class, userId);
-      return Optional.ofNullable(role);
+
+      if (role == null || role.isBlank()) {
+        Slf4j.logger.warn("User {} exists but has an empty role", userId);
+        return Optional.empty();
+      }
+
+      String normalizedRole = role.trim();
+      Slf4j.logger.debug("Role '{}' found for user {}", normalizedRole, userId);
+      return Optional.of(normalizedRole);
     } catch (EmptyResultDataAccessException e) {
+      Slf4j.logger.warn("No user found with id {}", userId);
       return Optional.empty();
     } catch (DataAccessException dae) {
       Slf4j.logger.error("Database error while fetching role for user: {}", userId, dae);
