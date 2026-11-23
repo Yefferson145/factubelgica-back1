@@ -90,7 +90,8 @@ public class SecurityConfig {
     config.setAllowedOriginPatterns(List.of(
         "http://localhost:*",
         "http://127.0.0.1:*",
-        "https://factubelgica.vercel.app"
+        "https://factubelgica.vercel.app",
+        "https://factubelgica-eosin.vercel.app/"
     ));
     config.setAllowedMethods(List.of(
         "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
