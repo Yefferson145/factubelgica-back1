@@ -20,8 +20,30 @@ public class CookieUtil {
   public CookieUtil(
       @Value("${app.cookie.secure:false}") boolean secure,
       @Value("${app.cookie.same-site:Lax}") String sameSite) {
-    this.secure = secure;
-    this.sameSite = (sameSite == null || sameSite.isBlank()) ? "Lax" : sameSite;
+    String normalizedSameSite = normalizeSameSite(sameSite);
+    // SameSite=None exige Secure=true en los navegadores modernos. Si se configura
+    // None sin Secure, se fuerza Secure para evitar que el navegador rechace la
+    // cookie en produccion.
+    boolean effectiveSecure = secure || "None".equalsIgnoreCase(normalizedSameSite);
+    this.secure = effectiveSecure;
+    this.sameSite = normalizedSameSite;
+  }
+
+  private static String normalizeSameSite(String value) {
+    if (value == null || value.isBlank()) {
+      return "Lax";
+    }
+    String trimmed = value.trim();
+    if (trimmed.equalsIgnoreCase("none")) {
+      return "None";
+    }
+    if (trimmed.equalsIgnoreCase("lax")) {
+      return "Lax";
+    }
+    if (trimmed.equalsIgnoreCase("strict")) {
+      return "Strict";
+    }
+    return trimmed;
   }
 
   public ResponseCookie createTokenCookie(String token) {
@@ -30,9 +52,13 @@ public class CookieUtil {
      * llevar Secure=true ni SameSite=None, porque el navegador la rechaza al no
      * viajar por HTTPS. Por defecto se usa Secure=false y SameSite=Lax.
      *
-     * En producción se puede sobrescribir con:
-     *   APP_COOKIE_SECURE=true
-     *   APP_COOKIE_SAME_SITE=None
+     * En producción (frontend y backend en dominios distintos) se configura:
+     *   COOKIE_SECURE=true
+     *   COOKIE_SAME_SITE=None
+     *
+     * Las variables de Render se leen en application.yaml como:
+     *   app.cookie.secure=${COOKIE_SECURE:false}
+     *   app.cookie.same-site=${COOKIE_SAME_SITE:Lax}
      */
     return ResponseCookie.from(TOKEN_COOKIE_NAME, token)
         .path(TOKEN_COOKIE_PATH)
