@@ -48,6 +48,7 @@ public class ClientRepository implements IClientRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<Client> findById(Integer clientId) {
     try {
       return jpaClientMutableRepository.findLatestByClientId(clientId)
@@ -59,6 +60,7 @@ public class ClientRepository implements IClientRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<Client> findByVatNumber(String vatNumber) {
     try {
       return jpaClientMutableRepository.findLatestByVatNumber(vatNumber)
@@ -70,6 +72,7 @@ public class ClientRepository implements IClientRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<List<Client>> getClientsPaginated(Integer lastId, int limit) {
     try {
       return Optional.of(

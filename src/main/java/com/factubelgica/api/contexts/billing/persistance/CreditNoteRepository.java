@@ -31,6 +31,7 @@ public class CreditNoteRepository implements ICreditNoteRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<List<CreditNote>> findAllPaginated(String lastId, int limit) {
     try {
       return Optional.of(

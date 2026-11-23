@@ -1,3 +1,9 @@
+server:
+  # Render inyecta la variable PORT; en local se usa 8080.
+  port: ${PORT:8080}
+  # Permite terminar peticiones en curso y cerrar el pool antes del SIGKILL de Render.
+  shutdown: graceful
+
 spring:
   application:
     name: api
@@ -5,26 +11,68 @@ spring:
     virtual:
       enabled: true
 
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${DATABASE_USER:postgres}
     password: ${DATABASE_PASSWORD:secret}
     driver-class-name: org.postgresql.Driver
+
+    # Supabase Session Pooler (puerto 5432) limita los clientes al pool_size del
+    # proyecto (15 por defecto) y ese limite es COMPARTIDO entre todas las
+    # instancias/conexiones. Hikari por defecto abre 10 conexiones (maximo y
+    # minimum-idle), por lo que dos despliegues solapados en Render agotan el
+    # pooler. Estos valores dejan margen suficiente para 1-2 instancias.
+    hikari:
+      pool-name: factubelgica-pool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:3}
+      # 0 evita que Hikari abra conexiones en cuanto arranca la aplicacion.
+      minimum-idle: ${DB_POOL_MIN_IDLE:0}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: 5000
+      idle-timeout: 300000
+      # Menor que el tiempo de vida maximo que pueda imponer el pooler.
+      max-lifetime: 600000
+      keepalive-time: 120000
+      # Si el pooler esta saturado durante un despliegue, reintenta hasta 30s
+      # en lugar de abortar el arranque inmediatamente.
+      initialization-fail-timeout: ${DB_POOL_INIT_FAIL_TIMEOUT_MS:30000}
+      # 0 = desactivado. Activar en local con DB_POOL_LEAK_DETECTION_MS=20000
+      # para detectar conexiones que no se devuelven al pool.
+      leak-detection-threshold: ${DB_POOL_LEAK_DETECTION_MS:0}
+      register-mbeans: false
+
   jpa:
+    # Evita mantener el EntityManager (y su conexion) abierto durante toda la
+    # peticion HTTP. Las lecturas que tocan relaciones LAZY estan marcadas con
+    # @Transactional(readOnly = true) en los repositorios.
+    open-in-view: false
     hibernate:
+      # Solo valida el esquema existente; nunca crea, altera ni borra tablas.
       ddl-auto: validate
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # El dialecto se detecta automaticamente desde el driver de PostgreSQL.
+        format_sql: ${JPA_FORMAT_SQL:false}
 
 app:
+  jwt:
+    # Se resuelve exclusivamente desde la variable de entorno JWT_SECRET_KEY
+    # (o desde .env en desarrollo local). Nunca se escribe un secreto aqui.
+    secret: ${JWT_SECRET_KEY:}
   cookie:
     # En local (HTTP) debe ser false. En produccion (HTTPS) usar COOKIE_SECURE=true.
     secure: ${COOKIE_SECURE:false}
     # En local usar Lax. En produccion con frontend en otro dominio: COOKIE_SAME_SITE=None
     same-site: ${COOKIE_SAME_SITE:Lax}
+
+logging:
+  level:
+    # Muestra el ciclo de vida del pool y el numero maximo configurado.
+    com.zaxxer.hikari: INFO
 
 springdoc:
   packages-to-scan: com.factubelgica.api.contexts

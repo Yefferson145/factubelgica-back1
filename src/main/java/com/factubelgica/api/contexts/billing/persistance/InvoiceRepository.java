@@ -40,6 +40,7 @@ public class InvoiceRepository implements IInvoiceRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<Invoice> findById(UUID invoiceId) {
     try {
       return jpaInvoiceRepository.findById(invoiceId)
@@ -51,6 +52,7 @@ public class InvoiceRepository implements IInvoiceRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<List<Invoice>> findByUserIdPaginated(UUID userId, String lastId, int limit) {
     try {
       return Optional.of(
@@ -66,6 +68,7 @@ public class InvoiceRepository implements IInvoiceRepository {
   }
 
   @Override
+  @Transactional(readOnly = true)
   public Optional<List<Invoice>> findAllPaginated(String lastId, int limit) {
     try {
       return Optional.of(
